@@ -1,0 +1,64 @@
+/* Soft, simple palette override — applies to light and dark mode. */
+:root:root {
+  --background: 0 0% 100%;
+  --foreground: 220 16% 16%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 16% 16%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 16% 16%;
+  --primary: 205 55% 40%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 18% 94%;
+  --secondary-foreground: 220 16% 20%;
+  --muted: 210 18% 94%;
+  --muted-foreground: 220 8% 45%;
+  --body-foreground: 220 10% 32%;
+  --accent: 205 40% 93%;
+  --accent-foreground: 205 55% 28%;
+  --destructive: 6 65% 52%;
+  --destructive-foreground: 0 0% 100%;
+  --warning: 35 80% 48%;
+  --warning-foreground: 0 0% 100%;
+  --success: 160 55% 35%;
+  --success-foreground: 0 0% 100%;
+  --border: 210 14% 89%;
+  --input: 210 14% 87%;
+  --ring: 205 55% 40%;
+  --chart-1: 4 65% 58%;
+  --chart-2: 215 70% 55%;
+  --chart-3: 175 50% 38%;
+  --chart-4: 35 80% 52%;
+  --chart-5: 285 50% 58%;
+}
+
+:root.dark {
+  --background: 220 14% 9%;
+  --foreground: 40 20% 96%;
+  --card: 220 12% 13%;
+  --card-foreground: 40 20% 96%;
+  --popover: 220 12% 13%;
+  --popover-foreground: 40 20% 96%;
+  --primary: 205 60% 62%;
+  --primary-foreground: 220 30% 10%;
+  --secondary: 220 11% 19%;
+  --secondary-foreground: 40 20% 92%;
+  --muted: 220 11% 19%;
+  --muted-foreground: 220 8% 65%;
+  --body-foreground: 220 10% 82%;
+  --accent: 205 30% 22%;
+  --accent-foreground: 205 60% 82%;
+  --destructive: 6 70% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --warning: 35 85% 58%;
+  --warning-foreground: 220 30% 10%;
+  --success: 160 50% 50%;
+  --success-foreground: 220 30% 10%;
+  --border: 220 10% 24%;
+  --input: 220 10% 24%;
+  --ring: 205 60% 62%;
+  --chart-1: 4 70% 65%;
+  --chart-2: 215 75% 68%;
+  --chart-3: 175 55% 55%;
+  --chart-4: 38 85% 60%;
+  --chart-5: 285 55% 70%;
+}

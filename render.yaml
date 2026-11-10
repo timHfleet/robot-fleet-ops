@@ -1,0 +1,7 @@
+# One-click deploy on Render (free tier): New > Blueprint > pick this repo.
+services:
+  - type: web
+    name: robot-fleet-ops
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
