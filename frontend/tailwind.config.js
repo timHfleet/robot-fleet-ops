@@ -37,6 +37,11 @@ export default {
         md: 'var(--radius-md)',
         sm: 'var(--radius-sm)',
       },
+      boxShadow: {
+        'retool-sm': 'var(--shadow-retool-sm)',
+        'retool-md': 'var(--shadow-retool-md)',
+        'retool-lg': 'var(--shadow-retool-lg)',
+      },
       fontFamily: {
         sans: 'var(--font-sans)',
         mono: 'var(--font-mono)',

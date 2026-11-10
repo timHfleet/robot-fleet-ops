@@ -20,6 +20,14 @@ The app seeds about 95 days of realistic demo data ending today, so every chart 
 | Tickets | Downtime tickets auto-opened from robot failures |
 | Ops / Leaderboard | Operator roster and a weighted performance score |
 
+### Ops tools
+
+| Tool | What it does |
+| --- | --- |
+| **Maintenance Alerts** | Scores every robot 0–100 by comparing its last 7 days with its own previous 4 weeks (failure rate, repair time, availability) and says what to do: pull within 24h, inspect this week, or no action. |
+| **Shift Handoff** | One-page report for the incoming shift lead: 30-second summary, output vs. target, robots down, failures and incidents, operator output, maintenance watchlist. Copy as text for Slack/Teams or print / save as PDF. |
+| **Capacity Planner** | "If these robots are down for N days, do we still hit the weekly target?" Tick robots and drag the days slider to see projected output, the shortfall in robot-days, and how many robots the fleet can lose and stay at or above 90% of target. |
+
 ## Run locally
 
 Requires Python 3.11+ and Node 20+.
@@ -55,6 +63,7 @@ backend/app/
   metrics.py     dashboard metrics
   tickets.py     downtime tickets
   data.py        add / search records
+  ops.py         maintenance scoring, shift handoff, capacity planner
   validate.py    input validation
 frontend/src/
   App.tsx, pages/            dashboard pages (TSX)

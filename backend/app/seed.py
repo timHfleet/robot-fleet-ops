@@ -23,8 +23,9 @@ OPERATORS = [
     ("Iris Novak", 60, None, 27, 29), ("Theo Grant", 25, None, 26, None),
 ]
 
-TASKS = [("fold_towel", 320), ("load_dishwasher", 260), ("wipe_table", 300),
-         ("pick_and_place", 420), ("open_drawer", 240)]
+# Weekly targets sit just under full-fleet capacity, so losing a robot or two matters.
+TASKS = [("fold_towel", 230), ("load_dishwasher", 190), ("wipe_table", 210),
+         ("pick_and_place", 300), ("open_drawer", 170)]
 HOMES = ["Maple St", "Harbor View", "Elm Court", "Cedar Loft", "Pine Ridge", "Oak Terrace"]
 OBJECTS = ["cup", "towel", "plate", "utensil", "box", "bottle", "sponge"]
 LIGHTING = ["daylight", "warm_indoor", "dim", "mixed"]
@@ -77,18 +78,25 @@ def seed(conn: sqlite3.Connection) -> None:
             filled = max(0, planned - rng.choices([0, 1, 2], weights=[70, 24, 6])[0])
             shifts.append((ds, shift, planned, filled))
 
-        # Robot hours + failures
-        for rid in robot_ids:
+        # Robot hours + failures. Two robots wear out over recent weeks so the
+        # predictive-maintenance page has a real signal to detect.
+        days_ago = (end - day).days
+        for idx, rid in enumerate(robot_ids):
+            wear = 1.0
+            if idx == 4 and days_ago < 24:      # Borealis-05: steadily worsening
+                wear = 1.0 + 2.6 * (24 - days_ago) / 24
+            elif idx == 6 and days_ago < 12:    # Cirrus-07: newer, milder trend
+                wear = 1.0 + 1.0 * (12 - days_ago) / 12
             scheduled = 16.0
-            ready = round(scheduled - max(0.0, rng.gauss(1.2, 1.0)), 2)
+            ready = round(scheduled - max(0.0, rng.gauss(1.2 * wear, 1.0)), 2)
             operating = round(ready * rng.uniform(0.85, 0.95), 2)
             collecting = round(operating * rng.uniform(0.55, 0.8), 2)
             robot_hours.append((rid, ds, scheduled, ready, operating, collecting))
-            if rng.random() < 0.18:
+            if rng.random() < 0.16 * wear:
                 failed = _at(day, time(6, 0), rng.uniform(0, 16 * 60))
                 if failed > now:
                     continue
-                recovered = failed + timedelta(minutes=rng.uniform(8, 150))
+                recovered = failed + timedelta(minutes=rng.uniform(8, 150) * wear ** 0.6)
                 # A few recent failures are still unrecovered, so open tickets show up.
                 still_down = recovered > now or ((now - failed) < timedelta(days=2) and rng.random() < 0.35)
                 rec = None if still_down else iso(recovered)
@@ -158,6 +166,8 @@ def seed(conn: sqlite3.Connection) -> None:
     conn.executemany(
         """INSERT INTO robot_hours (robot_id, day, scheduled_hours, ready_hours, operating_hours, collecting_hours)
            VALUES (?, ?, ?, ?, ?, ?)""", robot_hours)
+    # The worn robot is down right now, so tickets and the handoff report show a live outage.
+    failures.append((robot_ids[4], iso(now - timedelta(minutes=50)), None, "gripper_jam"))
     conn.executemany("INSERT INTO robot_failures (robot_id, failed_at, recovered_at, fault_code) VALUES (?, ?, ?, ?)", failures)
     conn.executemany(
         """INSERT INTO incidents (robot_id, occurred_at, detected_at, responded_at, resolved_at, severity,
