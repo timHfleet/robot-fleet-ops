@@ -87,4 +87,6 @@ if DIST.exists():
         file = DIST / path
         if path and file.is_file() and DIST in file.resolve().parents:
             return FileResponse(file)
-        return FileResponse(DIST / "index.html")
+        # Always revalidate the HTML shell so browsers pick up a new deploy right away.
+        # (Built JS/CSS under /assets have content hashes in their names, so they can cache.)
+        return FileResponse(DIST / "index.html", headers={"Cache-Control": "no-cache"})
