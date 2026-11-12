@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CheckCircle2, Target, Radio, Gauge, Users, DollarSign, CalendarCheck, Siren } from 'lucide-react'
 import { useOverview } from '../hooks/backend/metrics'
 import type { OverviewResult } from './data/types'
 import { MetricCard } from './ui/MetricCard'
+import { ChangeBadge, MetricExplainDialog } from './ui/MetricExplainDialog'
+import { compare, type MetricKey } from './ui/metricInfo'
 import { Section, PageGrid, Loading, ErrorBox } from './ui/Section'
 import { useDaysRange } from './ui/range'
 import { pct, num, money, shortDate } from './ui/format'
@@ -11,11 +14,24 @@ import { tickStyle, tooltipStyle, tooltipItemStyle } from './ui/chartTheme'
 export default function Dashboard() {
   const { data, loading, error, trigger } = useOverview({ cachePolicy: 'stale-while-revalidate' })
   const days = useDaysRange(trigger)
+  const [open, setOpen] = useState<MetricKey | null>(null)
 
   if (error) return <ErrorBox message={`Failed to load overview: ${error}`} />
   if (loading && !data) return <Loading />
   const d = (data ?? null) as OverviewResult | null
   if (!d) return <Loading />
+
+  const cmp = d.comparison
+  // Card props shared by every headline metric: click to explain, badge vs. previous period.
+  const explain = (key: MetricKey) => ({
+    onClick: () => setOpen(key),
+    footer:
+      cmp?.previous != null ? (
+        <span className="text-muted-foreground">
+          <ChangeBadge change={compare(key, cmp.current[key], cmp.previous[key])} /> vs. prev {days}d
+        </span>
+      ) : undefined,
+  })
 
   return (
     <div className="space-y-4">
@@ -26,6 +42,7 @@ export default function Dashboard() {
           sub={`${num(d.quality.accepted)} accepted of ${num(d.quality.reviewed)} reviewed`}
           icon={CheckCircle2}
           tone={d.quality.passRate >= 0.85 ? 'good' : d.quality.passRate >= 0.7 ? 'warn' : 'bad'}
+          {...explain('passRate')}
         />
         <MetricCard
           label="Usable episodes"
@@ -33,6 +50,7 @@ export default function Dashboard() {
           sub={`Goal attainment ${pct(d.throughput.goalAttainment)} of ${num(d.throughput.target)}`}
           icon={Target}
           tone={d.throughput.goalAttainment >= 0.9 ? 'good' : d.throughput.goalAttainment >= 0.7 ? 'warn' : 'bad'}
+          {...explain('accepted')}
         />
         <MetricCard
           label="Fleet availability"
@@ -40,6 +58,7 @@ export default function Dashboard() {
           sub={`MTBF ${num(d.uptime.mtbfHours, 1)}h · MTTR ${num(d.uptime.mttrMinutes, 0)}m`}
           icon={Radio}
           tone={d.uptime.availability >= 0.9 ? 'good' : d.uptime.availability >= 0.8 ? 'warn' : 'bad'}
+          {...explain('availability')}
         />
         <MetricCard
           label="Robot utilization"
@@ -47,6 +66,7 @@ export default function Dashboard() {
           sub="Hours collecting ÷ hours available"
           icon={Gauge}
           tone={d.efficiency.robotUtilization >= 0.6 ? 'good' : 'warn'}
+          {...explain('robotUtilization')}
         />
         <MetricCard
           label="Operator utilization"
@@ -54,12 +74,14 @@ export default function Dashboard() {
           sub="Hours collecting ÷ paid hours"
           icon={Users}
           tone={d.efficiency.operatorUtilization >= 0.6 ? 'good' : 'warn'}
+          {...explain('operatorUtilization')}
         />
         <MetricCard
           label="Cost per usable episode"
           value={money(d.efficiency.costPerUsableEpisode)}
           sub="Labor + robot cost ÷ accepted"
           icon={DollarSign}
+          {...explain('costPerUsableEpisode')}
         />
         <MetricCard
           label="Shift fill rate"
@@ -67,6 +89,7 @@ export default function Dashboard() {
           sub="Filled shifts ÷ planned shifts"
           icon={CalendarCheck}
           tone={d.coverage.fillRate >= 0.9 ? 'good' : 'warn'}
+          {...explain('fillRate')}
         />
         <MetricCard
           label="Incident rate"
@@ -74,8 +97,12 @@ export default function Dashboard() {
           sub={`${num(d.incidents.count)} incidents per 1,000 robot-hours basis`}
           icon={Siren}
           tone={d.incidents.ratePer1000RobotHours <= 5 ? 'good' : 'warn'}
+          {...explain('incidentRate')}
         />
       </div>
+      <p className="text-xs text-muted-foreground">Click any card for what it means, how it's calculated, and how it compares over time.</p>
+
+      {cmp ? <MetricExplainDialog metric={open} comparison={cmp} onOpenChange={(o) => !o && setOpen(null)} /> : null}
 
       <Section
         title={`Episodes collected — last ${days} days`}

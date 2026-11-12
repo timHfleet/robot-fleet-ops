@@ -1,4 +1,4 @@
-"""Generates ~95 days of realistic demo data ending today, so the dashboard always looks live."""
+"""Generates ~6 months of realistic demo data ending today, so the dashboard always looks live."""
 from __future__ import annotations
 
 import random
@@ -7,7 +7,7 @@ from datetime import datetime, time, timedelta, timezone
 
 from .db import iso, today
 
-DAYS = 95
+DAYS = 182  # two full 90-day windows, so every range has a previous period to compare with
 
 ROBOTS = [("Atlas-01", 14), ("Atlas-02", 14), ("Atlas-03", 14), ("Borealis-04", 16),
           ("Borealis-05", 16), ("Cirrus-06", 12), ("Cirrus-07", 12), ("Delta-08", 18)]

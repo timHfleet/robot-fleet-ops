@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import date, timedelta
 from typing import Any
 
-from .db import minutes_between, one, rows, since_date, since_ts, week_of
+from .db import minutes_between, one, rows, since_date, since_ts, today, week_of
 from .validate import clamp_days
 
 Params = dict[str, Any]
@@ -59,6 +60,76 @@ def _shared(conn: sqlite3.Connection, sd: str) -> dict:
 
 
 # ---------------------------------------------------------------- overview
+def _kpis(conn: sqlite3.Connection, start: date, end: date, target_days: int | None = None) -> dict:
+    """Headline KPIs for the half-open day window [start, end), flattened for comparisons."""
+    days = target_days if target_days is not None else (end - start).days
+    sd, ed = start.isoformat(), end.isoformat()
+    w = {"sd": sd, "ed": ed}
+    q = one(conn, """SELECT count(*) FILTER (WHERE status <> 'pending') AS reviewed,
+                            count(*) FILTER (WHERE status = 'accepted') AS accepted,
+                            count(*) FILTER (WHERE status = 'pending') AS pending
+                     FROM episodes WHERE started_at >= :sd AND started_at < :ed""", w)
+    target = one(conn, "SELECT COALESCE(sum(weekly_target), 0) * (? / 7.0) AS t FROM task_targets", (days,))["t"]
+    rh = one(conn, """SELECT COALESCE(sum(rh.scheduled_hours), 0) AS scheduled, COALESCE(sum(rh.ready_hours), 0) AS ready,
+                             COALESCE(sum(rh.operating_hours), 0) AS operating,
+                             COALESCE(sum(rh.collecting_hours), 0) AS collecting,
+                             COALESCE(sum(rh.ready_hours * r.cost_per_hour), 0) AS robot_cost
+                      FROM robot_hours rh JOIN robots r ON r.id = rh.robot_id
+                      WHERE rh.day >= :sd AND rh.day < :ed""", w)
+    f = one(conn, f"""SELECT count(*) AS failures,
+                             COALESCE(avg({minutes_between('recovered_at', 'failed_at')}), 0) AS mttr
+                      FROM robot_failures WHERE failed_at >= :sd AND failed_at < :ed""", w)
+    op = one(conn, """SELECT COALESCE(sum(s.paid_minutes), 0) / 60.0 AS paid_hours,
+                             COALESCE(sum(s.collecting_minutes), 0) / 60.0 AS collecting_hours,
+                             COALESCE(sum(s.paid_minutes / 60.0 * o.hourly_cost), 0) AS labor_cost
+                      FROM operator_sessions s JOIN operators o ON o.id = s.operator_id
+                      WHERE s.day >= :sd AND s.day < :ed""", w)
+    sh = one(conn, """SELECT COALESCE(sum(planned_operators), 0) AS planned, COALESCE(sum(filled_operators), 0) AS filled
+                      FROM shifts WHERE day >= :sd AND day < :ed""", w)
+    inc = one(conn, "SELECT count(*) AS n FROM incidents WHERE occurred_at >= :sd AND occurred_at < :ed", w)["n"]
+    return {
+        "start": sd, "end": (end - timedelta(days=1)).isoformat(), "days": days,
+        "passRate": _div(q["accepted"], q["reviewed"]), "accepted": q["accepted"], "reviewed": q["reviewed"],
+        "pending": q["pending"], "target": target, "goalAttainment": _div(q["accepted"], target),
+        "availability": _div(rh["ready"], rh["scheduled"]),
+        "scheduledHours": rh["scheduled"], "readyHours": rh["ready"], "operatingHours": rh["operating"],
+        "robotCollectingHours": rh["collecting"], "failures": f["failures"], "mttrMinutes": f["mttr"],
+        "mtbfHours": rh["operating"] / f["failures"] if f["failures"] else rh["operating"],
+        "robotUtilization": _div(rh["collecting"], rh["ready"]),
+        "operatorUtilization": _div(op["collecting_hours"], op["paid_hours"]),
+        "paidHours": op["paid_hours"], "operatorCollectingHours": op["collecting_hours"],
+        "laborCost": op["labor_cost"], "robotCost": rh["robot_cost"],
+        "costPerUsableEpisode": _div(op["labor_cost"] + rh["robot_cost"], q["accepted"]),
+        "fillRate": _div(sh["filled"], sh["planned"]), "plannedShifts": sh["planned"], "filledShifts": sh["filled"],
+        "incidents": inc, "incidentRate": _div(inc, rh["operating"]) * 1000,
+    }
+
+
+HISTORY_WEEKS = 12
+
+
+def period_comparison(conn: sqlite3.Connection, days: int) -> dict:
+    """Current window vs. the same-length window just before it, plus a weekly history."""
+    # Same window the headline cards use (since_date(days) through today), so the numbers match.
+    end = today() + timedelta(days=1)
+    start = today() - timedelta(days=days)
+    prev_start = start - (end - start)
+    first = one(conn, "SELECT min(day) AS d FROM robot_hours")["d"]
+    has_prev = first is not None and first <= prev_start.isoformat()
+    history = []
+    for i in range(HISTORY_WEEKS, 0, -1):
+        w_end = end - timedelta(days=7 * (i - 1))
+        w_start = w_end - timedelta(days=7)
+        if first is None or w_start.isoformat() < first:
+            continue
+        history.append(_kpis(conn, w_start, w_end))
+    return {
+        "current": _kpis(conn, start, end, days),
+        "previous": _kpis(conn, prev_start, start, days) if has_prev else None,
+        "history": history,
+    }
+
+
 def overview(conn: sqlite3.Connection, p: Params) -> dict:
     days = clamp_days(p.get("days"))
     sd, st = since_date(days), since_ts(days)
@@ -106,6 +177,7 @@ def overview(conn: sqlite3.Connection, p: Params) -> dict:
         "coverage": {"fillRate": _div(sh["filled"], sh["planned"])},
         "incidents": {"ratePer1000RobotHours": _div(inc["count"], rh["operating"]) * 1000, "count": inc["count"]},
         "daily": daily,
+        "comparison": period_comparison(conn, days),
     }
 
 

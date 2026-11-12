@@ -8,6 +8,73 @@ export type OverviewResult = {
   coverage: { fillRate: number }
   incidents: { ratePer1000RobotHours: number; count: number }
   daily: { day: string; accepted: number; rejected: number }[]
+  comparison: {
+    current: PeriodKpis
+    previous: PeriodKpis | null
+    history: PeriodKpis[]
+  }
+}
+
+export type ManagementReportResult = {
+  generatedAt: string
+  days: number
+  comparison: OverviewResult['comparison']
+  rejectReasons: { reason: string; count: number; share: number }[]
+  qaAgreement: number
+  robots: { name: string; availability: number; failures: number; downHours: number; mttrMinutes: number }[]
+  faults: { faultCode: string; count: number }[]
+  incidents: {
+    count: number
+    nearMiss: number
+    bySeverity: { severity: string; count: number }[]
+    byRootCause: { cause: string; count: number }[]
+    avgResolveMinutes: number
+  }
+  tasks: { task: string; weeklyTarget: number; target: number; accepted: number; attainment: number }[]
+  byShift: { shift: string; planned: number; filled: number; fillRate: number }[]
+  team: {
+    headcount: number
+    exits: number
+    attrition: number
+    sopAdherence: number
+    absenceRate: number
+    topOperators: { rank: number; name: string; score: number; accepted: number; passRate: number; perHour: number }[]
+  }
+  maintenance: { name: string; level: 'high' | 'medium'; action: string }[]
+}
+
+/** Headline KPIs for one date window (inclusive start/end), used for period comparisons. */
+export type PeriodKpis = {
+  start: string
+  end: string
+  days: number
+  passRate: number
+  accepted: number
+  reviewed: number
+  /** Collected but not yet reviewed by QA. */
+  pending: number
+  target: number
+  goalAttainment: number
+  availability: number
+  scheduledHours: number
+  readyHours: number
+  operatingHours: number
+  robotCollectingHours: number
+  failures: number
+  mttrMinutes: number
+  mtbfHours: number
+  robotUtilization: number
+  operatorUtilization: number
+  paidHours: number
+  operatorCollectingHours: number
+  laborCost: number
+  robotCost: number
+  costPerUsableEpisode: number
+  fillRate: number
+  plannedShifts: number
+  filledShifts: number
+  incidents: number
+  incidentRate: number
 }
 
 export type QualityResult = {

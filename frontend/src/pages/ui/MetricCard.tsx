@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '../../lib/shadcn/utils'
 
@@ -16,22 +17,44 @@ export function MetricCard({
   sub,
   icon: Icon,
   tone = 'default',
+  footer,
+  onClick,
 }: {
   label: string
   value: string
   sub?: string
   icon?: LucideIcon
   tone?: Tone
+  /** Extra line under the sub-text, e.g. a change-vs-previous badge. */
+  footer?: ReactNode
+  /** When set, the card becomes a button (e.g. to open an explanation). */
+  onClick?: () => void
 }) {
-  return (
-    <div className="rounded-lg border border-border bg-card text-card-foreground p-4 shadow-retool-sm">
+  const body = (
+    <>
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm text-muted-foreground">{label}</span>
         {Icon ? <Icon className="h-4 w-4 text-muted-foreground" aria-hidden /> : null}
       </div>
       <div className={cn('mt-1 text-2xl font-semibold tabular-nums', toneText[tone])}>{value}</div>
       {sub ? <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div> : null}
-    </div>
+      {footer ? <div className="mt-1.5 text-xs">{footer}</div> : null}
+    </>
+  )
+  const base = 'rounded-lg border border-border bg-card text-card-foreground p-4 shadow-retool-sm'
+  if (!onClick) return <div className={base}>{body}</div>
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`What is ${label}? Click for details and history`}
+      className={cn(
+        base,
+        'block w-full text-left transition-colors hover:border-primary/60 hover:bg-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      )}
+    >
+      {body}
+    </button>
   )
 }
 

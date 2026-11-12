@@ -13,6 +13,7 @@ import {
   Wrench,
   ClipboardList,
   SlidersHorizontal,
+  FileText,
   type LucideIcon,
 } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
@@ -27,6 +28,7 @@ import Operators from './pages/Operators'
 import Maintenance from './pages/Maintenance'
 import ShiftHandoff from './pages/ShiftHandoff'
 import Capacity from './pages/Capacity'
+import ManagementReport from './pages/ManagementReport'
 import { RangePicker } from './pages/ui/range'
 import AddDataDialog from './pages/ui/add-data/AddDataDialog'
 import SearchDataDialog from './pages/ui/search-data/SearchDataDialog'
@@ -49,6 +51,7 @@ const NAV: NavItem[] = [
 
 // Ops tools: turn the metrics into decisions.
 const TOOLS: NavItem[] = [
+  { to: '/report', label: 'Management Report', icon: FileText },
   { to: '/maintenance', label: 'Maintenance Alerts', icon: Wrench },
   { to: '/handoff', label: 'Shift Handoff', icon: ClipboardList },
   { to: '/capacity', label: 'Capacity Planner', icon: SlidersHorizontal },
@@ -137,6 +140,7 @@ export default function App() {
             <Route path="/maintenance" element={<Maintenance />} />
             <Route path="/handoff" element={<ShiftHandoff />} />
             <Route path="/capacity" element={<Capacity />} />
+            <Route path="/report" element={<ManagementReport />} />
           </Routes>
         </main>
       </div>

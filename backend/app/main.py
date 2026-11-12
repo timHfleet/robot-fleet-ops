@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import data, metrics, ops, tickets
+from . import data, metrics, ops, report, tickets
 from .db import connection, init_db
 from .validate import ValidationError
 
@@ -30,6 +30,7 @@ ROUTES: dict[str, Handler] = {
     "ops/maintenance": ops.maintenance,
     "ops/shiftHandoff": ops.shift_handoff,
     "ops/capacity": ops.capacity,
+    "ops/managementReport": report.management_report,
     # tickets
     "tickets/getTickets": tickets.get_tickets,
     "tickets/updateTicket": tickets.update_ticket,
