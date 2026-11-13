@@ -15,6 +15,40 @@ export type OverviewResult = {
   }
 }
 
+/** Value formats used by root-cause rows. */
+export type DriverKind = 'rate' | 'count' | 'money' | 'decimal'
+
+/** One piece of a metric change. `impact` is in the metric's own units and all rows sum to the total change. */
+export type DriverRow = {
+  name: string
+  current: number
+  previous: number
+  impact: number
+  /** Ratio rows only: the denominator. 0 means the segment had no activity in that window. */
+  currentBase?: number
+  previousBase?: number
+  /** Only on factor rows that mix units. */
+  kind?: DriverKind
+}
+
+export type DriverGroup = {
+  title: string
+  /** What the row values describe, e.g. "rejections" or "pass rate". */
+  subject: string
+  kind: DriverKind | 'mixed'
+  valueLabel: string
+  rows: DriverRow[]
+}
+
+export type DriversResult = {
+  metric: string
+  current: { start: string; end: string }
+  previous: { start: string; end: string }
+  primary: DriverGroup
+  breakdowns: DriverGroup[]
+  context: { label: string; current: number; previous: number; kind: DriverKind }[]
+}
+
 export type ManagementReportResult = {
   generatedAt: string
   days: number

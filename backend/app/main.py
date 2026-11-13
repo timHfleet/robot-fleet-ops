@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import data, metrics, ops, report, tickets
+from . import data, drivers, metrics, ops, report, tickets
 from .db import connection, init_db
 from .validate import ValidationError
 
@@ -18,6 +18,7 @@ Handler = Callable[[Any, dict], Any]
 ROUTES: dict[str, Handler] = {
     # metrics (read-only)
     "metrics/overview": metrics.overview,
+    "metrics/drivers": drivers.drivers,
     "metrics/quality": metrics.quality,
     "metrics/throughput": metrics.throughput,
     "metrics/uptime": metrics.uptime,

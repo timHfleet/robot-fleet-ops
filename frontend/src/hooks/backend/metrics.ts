@@ -1,6 +1,7 @@
 import { makeHook } from '../../lib/api'
 import type {
   CoverageResult,
+  DriversResult,
   EfficiencyResult,
   IncidentsResult,
   OperatorLeaderboardResult,
@@ -21,4 +22,5 @@ export const useEfficiency = makeHook<Days, EfficiencyResult>('metrics/efficienc
 export const useCoverage = makeHook<Days, CoverageResult>('metrics/coverage')
 export const useIncidents = makeHook<Days, IncidentsResult>('metrics/incidents')
 export const useOperators = makeHook<Days, OperatorsResult>('metrics/operators')
+export const useDrivers = makeHook<{ metric: string; start: string; end: string }, DriversResult>('metrics/drivers')
 export const useOperatorLeaderboard = makeHook<Days, OperatorLeaderboardResult>('metrics/operatorLeaderboard')

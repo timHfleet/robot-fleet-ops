@@ -17,7 +17,9 @@ export function money(x: number | null | undefined): string {
 
 export function shortDate(iso: string | null | undefined): string {
   if (!iso) return '—'
-  const d = new Date(iso)
+  // A bare "YYYY-MM-DD" is a calendar day: read it as local midnight. new Date() would read it as
+  // UTC midnight, which shows as the previous day anywhere west of UTC.
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? new Date(`${iso}T00:00:00`) : new Date(iso)
   if (isNaN(d.getTime())) return iso
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
