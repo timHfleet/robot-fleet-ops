@@ -2,7 +2,7 @@
 
 The system prompt (metric definitions, page guide, how the data is produced) is fixed and cached;
 each question also gets a fresh snapshot of the live numbers so answers match what users see.
-Needs ANTHROPIC_API_KEY in the environment; without it the bot replies that it isn't set up.
+Needs ANTHROPIC_API_KEY for AI answers; without it (or if the API fails) helpkb gives built-in answers.
 """
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import os
 import sqlite3
 from typing import Any
 
-from . import metrics, ops, tickets
+from . import helpkb, metrics, ops, tickets
 from .db import iso, now_utc
 from .validate import ValidationError
 
@@ -122,10 +122,12 @@ def _clean_history(raw: Any) -> list[dict[str, str]]:
 def ask(conn: sqlite3.Connection, p: dict) -> dict:
     history = _clean_history(p.get("messages"))
     page = str(p.get("page") or "")[:60]
+    def builtin(note: str = "") -> dict:
+        # Keyword-matched answers from the built-in guide plus live numbers; no AI needed.
+        return {"answer": helpkb.answer(conn, history[-1]["content"], page) + note, "configured": False}
+
     if not os.environ.get("ANTHROPIC_API_KEY"):
-        return {"answer": "The help bot isn't set up yet: an ANTHROPIC_API_KEY needs to be added to this "
-                          "app's environment (Render → Environment). Meanwhile, the ⓘ buttons on each metric "
-                          "card explain how it is calculated.", "configured": False}
+        return builtin()
 
     import anthropic  # imported lazily so the dashboard runs without the SDK configured
 
@@ -149,14 +151,9 @@ def ask(conn: sqlite3.Connection, p: dict) -> dict:
             messages=history,
         )
     except anthropic.AuthenticationError:
-        return {"answer": "The help bot's API key was rejected. Check ANTHROPIC_API_KEY in the app settings.",
-                "configured": False}
-    except anthropic.RateLimitError:
-        return {"answer": "The help bot is busy right now. Please try again in a minute.", "configured": True}
-    except anthropic.APIStatusError as e:
-        return {"answer": f"The help bot hit an error ({e.status_code}). Please try again.", "configured": True}
-    except anthropic.APIConnectionError:
-        return {"answer": "The help bot couldn't reach the AI service. Please try again.", "configured": True}
+        return builtin("\n\n(The AI assistant's API key was rejected, so this is the built-in answer.)")
+    except (anthropic.RateLimitError, anthropic.APIStatusError, anthropic.APIConnectionError):
+        return builtin("\n\n(The AI assistant is unavailable right now, so this is the built-in answer.)")
 
     if resp.stop_reason == "refusal":
         return {"answer": "I can't help with that one. Try asking about the dashboard's metrics or pages.",
