@@ -4,7 +4,12 @@ An operations dashboard for a robot data-collection fleet: QA pass rate, through
 
 **Stack:** Python (FastAPI + SQLite) API · React + TypeScript (TSX) front end with Tailwind, Radix UI and Recharts.
 
-The app seeds about 95 days of realistic demo data ending today, so every chart has something to show.
+The data comes from a built-in fleet simulator that runs live: about 6 months of history, and new activity
+added as it "happens" (episodes, QA verdicts, robot failures and repairs, incidents), so a new day of data
+appears every day without anyone touching it. See [Live data](#live-data).
+
+A **help bot** ("Ask about this data", bottom-right) answers questions about the metrics and today's numbers
+using Claude. See [Help bot](#help-bot).
 
 ## Pages
 
@@ -48,10 +53,29 @@ npm install
 npm run dev
 ```
 
+## Live data
+
+`backend/app/sim.py` generates each calendar day from a random generator seeded by that date, so a day's
+numbers never change once written and a rebuilt database has identical history. The server calls
+`sim.advance()` on startup and every 5 minutes (`SIM_INTERVAL_SECONDS`); it writes only what has already
+happened by then: episodes as they start, QA verdicts 1.5–36 h later, repairs when they finish. Robot wear
+follows fixed cycles, so Maintenance Alerts always has something real to find. `GET /api/health` reports
+`dataThrough`. Records added by hand through **Add data** are kept until the database is rebuilt
+(on Render's free plan that is every restart, because `RESET_DB_ON_START=1`).
+
+## Help bot
+
+`POST /api/help/ask` sends the conversation, the page the user is on and a compact snapshot of the live KPIs
+(last 7 and 30 days, top maintenance risks, open tickets) to Claude (`claude-opus-5-5` at low effort, server-side
+refusal fallback on). The metric definitions and page guide live in the cached system prompt in
+`backend/app/help.py`. Set `ANTHROPIC_API_KEY` in the environment to turn it on (`HELP_BOT_MODEL` overrides the
+model); without a key the bot says it isn't set up. Each question costs roughly 2¢ at current Opus 5.5 prices.
+
 ## Deploy
 
 The `Dockerfile` builds the front end and serves it from the Python server as a single web service.
 On [Render](https://render.com): push this folder to a GitHub repository, then **New → Blueprint** and pick the repo (`render.yaml` is included).
+Add `ANTHROPIC_API_KEY` under the service's **Environment** tab to enable the help bot.
 
 ## Project layout
 
@@ -59,7 +83,8 @@ On [Render](https://render.com): push this folder to a GitHub repository, then *
 backend/app/
   main.py        API routes (POST /api/<group>/<name>) + static front end
   db.py          SQLite schema and helpers
-  seed.py        demo data generator
+  sim.py         live fleet simulator (deterministic per day)
+  help.py        help bot (Claude)
   metrics.py     dashboard metrics
   tickets.py     downtime tickets
   data.py        add / search records

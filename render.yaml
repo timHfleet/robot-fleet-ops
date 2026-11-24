@@ -5,3 +5,6 @@ services:
     runtime: docker
     plan: free
     healthCheckPath: /api/health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false  # set it in the Render dashboard; enables the help bot

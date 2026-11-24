@@ -1,6 +1,7 @@
 """FastAPI server: JSON API under /api plus the built React front end."""
 from __future__ import annotations
 
+import asyncio
 import os
 from pathlib import Path
 from typing import Any, Callable
@@ -9,7 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import data, drivers, metrics, ops, report, tickets
+from . import data, drivers, help, metrics, ops, report, sim, tickets
 from .db import connection, init_db
 from .validate import ValidationError
 
@@ -49,15 +50,55 @@ ROUTES: dict[str, Handler] = {
 app = FastAPI(title="Robot Fleet Ops Metrics")
 
 
+SIM_INTERVAL_S = int(os.environ.get("SIM_INTERVAL_SECONDS", "300"))
+_sim_state: dict = {"through": None}
+
+
+def _advance_sim() -> None:
+    with connection() as conn:
+        _sim_state.update(sim.advance(conn))
+
+
+async def _sim_loop() -> None:
+    # Keep the simulated fleet moving: new episodes, failures, QA verdicts and a new day every day.
+    while True:
+        await asyncio.sleep(SIM_INTERVAL_S)
+        try:
+            await asyncio.to_thread(_advance_sim)
+        except Exception as e:  # never let the loop die
+            print(f"simulator tick failed: {e}", flush=True)
+
+
 @app.on_event("startup")
-def _startup() -> None:
-    # RESET_DB_ON_START=1 regenerates demo data on each boot (handy for a public demo).
+async def _startup() -> None:
+    # RESET_DB_ON_START=1 rebuilds the database on each boot. The simulator is deterministic per
+    # day, so the rebuilt history is identical; only hand-entered records are lost.
     init_db(reset=os.environ.get("RESET_DB_ON_START") == "1")
+    _advance_sim()
+    asyncio.get_running_loop().create_task(_sim_loop())
 
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"ok": True}
+    return {"ok": True, "dataThrough": _sim_state.get("through")}
+
+
+@app.post("/api/help/ask")
+async def help_ask(request: Request) -> JSONResponse:
+    # Separate from the generic router: the Claude call can take a few seconds, so run it in a thread.
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    def run() -> dict:
+        with connection() as conn:
+            return help.ask(conn, body if isinstance(body, dict) else {})
+
+    try:
+        return JSONResponse(await asyncio.to_thread(run))
+    except ValidationError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
 
 
 @app.post("/api/{group}/{name}")
