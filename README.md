@@ -69,7 +69,9 @@ follows fixed cycles, so Maintenance Alerts always has something real to find. `
 (last 7 and 30 days, top maintenance risks, open tickets) to Claude (`claude-opus-5-5` at low effort, server-side
 refusal fallback on). The metric definitions and page guide live in the cached system prompt in
 `backend/app/help.py`. Set `ANTHROPIC_API_KEY` in the environment to turn it on (`HELP_BOT_MODEL` overrides the
-model); without a key the bot says it isn't set up. Each question costs roughly 2¢ at current Opus 5.5 prices.
+model). Each question costs roughly 2¢ at current Opus 5.5 prices.
+
+Without a key (or if the API is down) the bot still works, from built-in analysis: `helpqa.py` answers open-ended questions by running the dashboard's own analyses ("why did the pass rate drop this week?" uses the drivers breakdown; "which robot should we service first?", "which shift is hardest to staff?", "which task is behind?", "which operators need coaching?", "why do episodes get rejected?", "are any robots down?", "how did the last shift go?", "what should we focus on?"), and `helpkb.py` explains every metric and page with live values. Questions outside those patterns get a list of what it can answer.
 
 ## Deploy
 

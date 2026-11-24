@@ -10,7 +10,7 @@ import re
 import sqlite3
 from typing import Any, Callable
 
-from . import metrics
+from . import helpqa, metrics
 
 Ov = dict[str, Any]
 
@@ -178,6 +178,9 @@ def _summary(ov: Ov, days: int) -> str:
 
 def answer(conn: sqlite3.Connection, question: str, page: str) -> str:
     q = _norm(question)
+    analysed = helpqa.answer(conn, question)  # open-ended "why / which / what should" questions
+    if analysed:
+        return analysed
     days = 7 if re.search(r"\b(week|7 days|seven days|lately|recent)", q) else (
         90 if re.search(r"\b(quarter|90 days|3 months|three months)", q) else 30)
     ov = metrics.overview(conn, {"days": days})
@@ -205,5 +208,6 @@ def answer(conn: sqlite3.Connection, question: str, page: str) -> str:
 
     topics = ", ".join(t[1].split(" (")[0] for t in METRICS.values())
     return ("I can explain any metric on this dashboard with today's numbers, what each page shows, and where "
-            f"the data comes from. Try asking about: {topics}. (Open-ended questions like \"why did X drop "
-            "yesterday?\" need the AI version of this bot, which turns on when ANTHROPIC_API_KEY is set.)")
+            f"the data comes from, and dig into questions like \"why did the pass rate drop this week?\", \"which robot "
+            "should we service first?\", \"which shift is hardest to staff?\", \"what should we focus on?\" or "
+            f"\"are any robots down right now?\". Metrics I know: {topics}.")
