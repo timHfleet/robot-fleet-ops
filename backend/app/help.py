@@ -15,7 +15,11 @@ from . import helpkb, metrics, ops, tickets
 from .db import iso, now_utc
 from .validate import ValidationError
 
-MODEL = os.environ.get("HELP_BOT_MODEL", "claude-opus-5-5")
+# Haiku 5.5 is the cheapest current Claude model (~0.1¢ per question here). Set HELP_BOT_MODEL to e.g.
+# claude-opus-5-5 for deeper answers (~2¢ per question).
+MODEL = os.environ.get("HELP_BOT_MODEL", "claude-haiku-5-5")
+# Models that support the server-side refusal fallback (Haiku 5.5 does not).
+FALLBACK_MODELS = {"claude-opus-5-5", "claude-sonnet-5-5", "claude-opus-5", "claude-fable-5-2", "claude-fable-5-1"}
 MAX_TURNS = 12          # earlier turns are dropped from the request
 MAX_QUESTION_CHARS = 2000
 
@@ -141,15 +145,18 @@ def ask(conn: sqlite3.Connection, p: dict) -> dict:
 
     client = anthropic.Anthropic()
     try:
-        resp = client.beta.messages.create(
+        request = dict(
             model=MODEL,
             max_tokens=16000,
-            betas=["server-side-fallback-2026-07-01"],
-            fallbacks="default",
             output_config={"effort": "low"},
             system=[{"type": "text", "text": GUIDE, "cache_control": {"type": "ephemeral"}}],
             messages=history,
         )
+        if MODEL in FALLBACK_MODELS:  # on a refusal, the API retries on another model in the same call
+            resp = client.beta.messages.create(**request, betas=["server-side-fallback-2026-07-01"],
+                                               fallbacks="default")
+        else:
+            resp = client.messages.create(**request)
     except anthropic.AuthenticationError:
         return builtin("\n\n(The AI assistant's API key was rejected, so this is the built-in answer.)")
     except (anthropic.RateLimitError, anthropic.APIStatusError, anthropic.APIConnectionError):
