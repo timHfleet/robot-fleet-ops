@@ -33,6 +33,7 @@ import { RangePicker } from './pages/ui/range'
 import AddDataDialog from './pages/ui/add-data/AddDataDialog'
 import SearchDataDialog from './pages/ui/search-data/SearchDataDialog'
 import ThemeToggle from './pages/ui/ThemeToggle'
+import HelpBot from './pages/ui/HelpBot'
 import { cn } from './lib/shadcn/utils'
 
 type NavItem = { to: string; label: string; icon: LucideIcon }
@@ -144,6 +145,7 @@ export default function App() {
           </Routes>
         </main>
       </div>
+      <HelpBot />
     </div>
   )
 }

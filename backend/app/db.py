@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS robot_tickets (
 
 
 def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)  # the simulator writes in the background
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
@@ -185,12 +185,17 @@ def minutes_between(later: str, earlier: str) -> str:
 
 
 def init_db(reset: bool = False) -> None:
-    from .seed import seed  # local import to avoid a cycle
+    from . import sim  # local import to avoid a cycle
 
     if reset and DB_PATH.exists():
         DB_PATH.unlink()
-    fresh = not DB_PATH.exists()
     with connection() as conn:
         conn.executescript(SCHEMA)
-        if fresh:
-            seed(conn)
+        ok = sim.ensure_schema(conn)
+    if not ok:  # database built by the old one-shot seeder: rebuild it once for the live simulator
+        DB_PATH.unlink()
+        with connection() as conn:
+            conn.executescript(SCHEMA)
+            sim.ensure_schema(conn)
+    with connection() as conn:
+        sim.advance(conn)
